@@ -1,38 +1,84 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
-Board board = new Board(); // Draw
-board.Click(0, 1); // showX: (0, 1)
-board.Click(0, 1); // don't do anything
-board.Click(1, 1); // showO: (1, 1)
-board.Click(0, 0); // showX: (0, 0)
-board.Click(0, 2); // showO: (1, 2)
-board.Click(2, 0); // showX: (2, 0)
-board.Click(1, 0); // showO: (1, 0)
-board.Click(1, 2); // showX: (1, 2)
-board.Click(2, 1); // showO: (2, 1)
-board.Click(2, 2); // showX: (2, 2) draw
+using System.Drawing;
 
-board = new Board();
-board.Click(1, 1); // showX: (1, 1)
-board.Click(2, 1); // showO: (2, 1)
-board.Click(1, 0); // showX: (1, 0)
-board.Click(0, 1); // showO: (0, 1)
-board.Click(1, 2); // showX: (1, 2) winX
+int SIZE = 10;
+int WIN_LENGTH= 5;
+
+Board board = new Board(SIZE, WIN_LENGTH);
+
+board.Click(1, 0);
+board.Click(0, 0);
+board.Click(1, 1);
+board.Click(0, 1);
+board.Click(1, 2);
+board.Click(0, 2);
+board.Click(1, 3);
+board.Click(0, 3);
+board.Click(2, 0);
+board.Click(0, 4);
+// O WON
+
+Board board2 = new Board(SIZE, WIN_LENGTH);
+
+board2.Click(0, 0);
+board2.Click(1, 0);
+board2.Click(0, 1);
+board2.Click(1, 1);
+board2.Click(0, 2);
+board2.Click(1, 2);
+board2.Click(0, 3);
+board2.Click(1, 3);
+board2.Click(0, 4);
+// X WON
 
 public class Board
 {
-    private char[,] board;
+    private char[] board;
     private int size;
     private int moves;
 
     const char X_SYMBOL = 'X';
     const char O_SYMBOL = 'O';
 
-    public Board()
+    Dictionary<int, List<int[]>> winningCombinations = new Dictionary<int, List<int[]>>();
+
+    void GenerateWinningCombinations(int size, int winLength)
     {
-        size = 3;
-        board = new char[size, size];
+        for (int i = 0; i < size; i++)
+        {
+            for (int j = 0; j <= size - winLength; j++)
+            {
+                List<int> rowCombination = new List<int>();
+                List<int> colCombination = new List<int>();
+                for (int k = 0; k < winLength; k++)
+                {
+                    rowCombination.Add(i * size + j + k);
+                    colCombination.Add((j + k) * size + i);
+                }
+                winningCombinations.Add(winningCombinations.Count + 1, new List<int[]> { rowCombination.ToArray(), colCombination.ToArray() });
+
+                if (i <= size - winLength)
+                {
+                    List<int> diagonalCombination = new List<int>();
+                    List<int> antiDiagonalCombination = new List<int>();
+                    for (int k = 0; k < winLength; k++)
+                    {
+                        diagonalCombination.Add((i + k) * size + j + k);
+                        antiDiagonalCombination.Add((i + k) * size + (j + winLength - k - 1));
+                    }
+                    winningCombinations.Add(winningCombinations.Count + 1, new List<int[]> { diagonalCombination.ToArray(), antiDiagonalCombination.ToArray() });
+                }
+            }
+        }
+    }
+
+    public Board(int size, int winLength)
+    {
+        this.size = size;
+        board = new char[size * size];
         moves = 0;
+        GenerateWinningCombinations(size, winLength);
     }
 
     public void Click(int x, int y)
@@ -43,7 +89,7 @@ public class Board
             return;
         }
 
-        if (board[x, y] != '\0')
+        if (board[x*size + y] != '\0')
         {
             Console.WriteLine("Is already filled up");
             return;
@@ -52,16 +98,16 @@ public class Board
         moves++;
         if (moves % 2 == 0)
         {
-            ShowX(x, y);
-            board[x, y] = X_SYMBOL;
+            ShowO(x, y);
+            board[x * size + y] = O_SYMBOL;
         }
         else
         {
-            ShowO(x, y);
-            board[x, y] = O_SYMBOL;
+            ShowX(x, y);
+            board[x * size + y] = X_SYMBOL;
         }
 
-        ShowBoard();
+        //ShowBoard();
 
         if (CheckWin(X_SYMBOL))
         {
@@ -77,49 +123,42 @@ public class Board
         }
     }
 
-    private bool CheckWin(char symbol)
+    bool CheckWin(char playerSymbol)
     {
-        for (int i = 0; i < size; i++)
+        foreach (var combinationList in winningCombinations.Values)
         {
-            if (board[i, 0] == symbol && board[i, 1] == symbol && board[i, 2] == symbol)
-                return true;
-
-            if (board[0, i] == symbol && board[1, i] == symbol && board[2, i] == symbol)
-                return true;
+            foreach (var combination in combinationList)
+            {
+                if (Array.TrueForAll(combination, index => board[index] == playerSymbol))
+                {
+                    return true;
+                }
+            }
         }
-
-        if (board[0, 0] == symbol && board[1, 1] == symbol && board[2, 2] == symbol)
-            return true;
-
-        if (board[0, 2] == symbol && board[1, 1] == symbol && board[2, 0] == symbol)
-            return true;
-
         return false;
     }
 
-    private void ShowBoard()
-    {
-        for (int i = 0; i < size; i++)
-        {
-            for (int j = 0; j < size; j++)
-            {
-                char symbol = board[i, j];
-                Console.Write((symbol == '\0') ? "- " : $"{symbol} ");
-            }
-            Console.WriteLine();
-        }
-    }
+    //private void ShowBoard()
+    //{
+    //    for (int i = 0; i < size; i++)
+    //    {
+    //        for (int j = 0; j < size; j++)
+    //        {
+    //            char symbol = board[i, j];
+    //            Console.Write((symbol == '\0') ? "- " : $"{symbol} ");
+    //        }
+    //        Console.WriteLine();
+    //    }
+    //}
 
     private void ShowX(int x, int y)
     {
         Console.WriteLine($"X at position ({x}, {y})");
     }
-
     private void ShowO(int x, int y)
     {
         Console.WriteLine($"O at position ({x}, {y})");
     }
-
     private void WinX()
     {
         Console.WriteLine("X Won\n----------------------------");
@@ -133,4 +172,3 @@ public class Board
         Console.WriteLine("Draw\n----------------------------");
     }
 }
-
